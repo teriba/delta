@@ -84,7 +84,7 @@ local function flingPlayer(touchedPart, myPart)
         contactDirection = Vector3.new(math.random(-1,1), 0, math.random(-1,1)).Unit
     end
     
-    local velocity = contactDirection * 200 + Vector3.new(0, 100, 0)  -- Strong push + upward fling
+    local velocity = contactDirection * 200000 + Vector3.new(0, 100, 0)  -- Strong push + upward fling
     
     local bodyVelocity = Instance.new("BodyVelocity")
     bodyVelocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)  -- Full control
