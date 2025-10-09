@@ -1,0 +1,128 @@
+-- Fling Toggle Script for Roblox (Delta Executor)
+-- Paste this into Delta and execute in-game. It creates a simple UI with a toggle button.
+-- Press the toggle to enable/disable flinging other players on touch.
+
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+
+local player = Players.LocalPlayer
+local playerGui = player:WaitForChild("PlayerGui")
+
+-- Create ScreenGui
+local screenGui = Instance.new("ScreenGui")
+screenGui.Name = "FlingToggleGui"
+screenGui.Parent = playerGui
+screenGui.ResetOnSpawn = false
+
+-- Create Main Frame
+local mainFrame = Instance.new("Frame")
+mainFrame.Name = "MainFrame"
+mainFrame.Size = UDim2.new(0, 200, 0, 100)
+mainFrame.Position = UDim2.new(0, 10, 0, 10)
+mainFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+mainFrame.BorderSizePixel = 0
+mainFrame.Parent = screenGui
+
+-- Add corner radius to frame
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 10)
+corner.Parent = mainFrame
+
+-- Create Toggle Button
+local toggleButton = Instance.new("TextButton")
+toggleButton.Name = "ToggleButton"
+toggleButton.Size = UDim2.new(0, 180, 0, 40)
+toggleButton.Position = UDim2.new(0, 10, 0, 10)
+toggleButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)  -- Red for OFF
+toggleButton.Text = "FLING: OFF"
+toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+toggleButton.TextScaled = true
+toggleButton.Font = Enum.Font.SourceSansBold
+toggleButton.Parent = mainFrame
+
+-- Add corner to button
+local buttonCorner = Instance.new("UICorner")
+buttonCorner.CornerRadius = UDim.new(0, 5)
+buttonCorner.Parent = toggleButton
+
+-- Fling state
+local flingEnabled = false
+
+-- Toggle function
+local function toggleFling()
+    flingEnabled = not flingEnabled
+    if flingEnabled then
+        toggleButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)  -- Green for ON
+        toggleButton.Text = "FLING: ON"
+    else
+        toggleButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)  -- Red for OFF
+        toggleButton.Text = "FLING: OFF"
+    end
+end
+
+toggleButton.MouseButton1Click:Connect(toggleFling)
+
+-- Fling function
+local function flingPlayer(touchedPart)
+    if not flingEnabled then return end
+    
+    local touchedPlayer = Players:GetPlayerFromCharacter(touchedPart.Parent)
+    if not touchedPlayer or touchedPlayer == player then return end
+    
+    local targetCharacter = touchedPlayer.Character
+    if not targetCharacter then return end
+    
+    local humanoidRootPart = targetCharacter:FindFirstChild("HumanoidRootPart")
+    if not humanoidRootPart then return end
+    
+    -- Calculate direction away from user
+    local userRootPart = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+    if not userRootPart then return end
+    
+    local direction = (humanoidRootPart.Position - userRootPart.Position).Unit
+    local velocity = direction * 100  -- Adjust speed as needed (higher = farther fling)
+    
+    -- Apply BodyVelocity for fling
+    local bodyVelocity = Instance.new("BodyVelocity")
+    bodyVelocity.MaxForce = Vector3.new(4000, 4000, 4000)
+    bodyVelocity.Velocity = velocity
+    bodyVelocity.Parent = humanoidRootPart
+    
+    -- Remove after a short time to stop the fling
+    game:GetService("Debris"):AddItem(bodyVelocity, 0.5)
+end
+
+-- Connect touch events to all character parts
+local function onCharacterAdded(character)
+    local connections = {}
+    for _, part in pairs(character:GetChildren()) do
+        if part:IsA("BasePart") then
+            local touchConnection = part.Touched:Connect(function(touchedPart)
+                flingPlayer(touchedPart)
+            end)
+            table.insert(connections, touchConnection)
+        end
+    end
+    
+    -- Handle new parts added to character (e.g., accessories)
+    local childAddedConnection = character.ChildAdded:Connect(function(child)
+        if child:IsA("BasePart") then
+            local touchConnection = child.Touched:Connect(function(touchedPart)
+                flingPlayer(touchedPart)
+            end)
+            table.insert(connections, touchConnection)
+        end
+    end)
+    table.insert(connections, childAddedConnection)
+end
+
+-- Listen for character spawn
+local characterConnection = player.CharacterAdded:Connect(onCharacterAdded)
+
+-- Handle if character already exists
+if player.Character then
+    onCharacterAdded(player.Character)
+end
+
+print("Fling Toggle UI loaded! Toggle with the button.")
