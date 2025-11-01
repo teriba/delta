@@ -2,11 +2,11 @@ local players = game:GetService("Players")
 
 local player = players.LocalPlayer
 
-local baseSpeed = player.Character.Humanoid.Walkspeed
+local baseSpeed = player.Character.Humanoid.WalkSpeed
 
 while true do
-  if player.Character.Humanoid.Walkspeed < baseSpeed then
-    player.Character.Humanoid.Walkspee = baseSpeed
+  if player.Character.Humanoid.WalkSpeed < baseSpeed then
+    player.Character.Humanoid.WalkSpeed = baseSpeed
   end
 task.wait(0.1)
 end
