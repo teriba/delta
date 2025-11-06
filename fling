@@ -1,127 +1,51 @@
--- Updated Fling Toggle Script (Stronger Fling + Debug Prints)
--- Changes: math.huge MaxForce, higher velocity with upward boost, direction fallback.
--- Prints will show in console: "Touched detected!" on contact, "Fling applied to [player]!" on success.
+-- LocalScript (place in StarterPlayerScripts)
 
 local Players = game:GetService("Players")
-local TweenService = game:GetService("TweenService")
-local RunService = game:GetService("RunService")
-local Debris = game:GetService("Debris")
-
 local player = Players.LocalPlayer
-local playerGui = player:WaitForChild("PlayerGui")
+local character = player.Character or player.CharacterAdded:Wait()
+local rootPart = character:WaitForChild("HumanoidRootPart")
+local torso = character:WaitForChild("Torso")
 
--- Create ScreenGui (same as before)
-local screenGui = Instance.new("ScreenGui")
-screenGui.Name = "FlingToggleGui"
-screenGui.Parent = playerGui
-screenGui.ResetOnSpawn = false
 
-local mainFrame = Instance.new("Frame")
-mainFrame.Name = "MainFrame"
-mainFrame.Size = UDim2.new(0, 200, 0, 100)
-mainFrame.Position = UDim2.new(0, 10, 0, 10)
-mainFrame.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-mainFrame.BorderSizePixel = 0
-mainFrame.Parent = screenGui
 
-local corner = Instance.new("UICorner")
-corner.CornerRadius = UDim.new(0, 10)
-corner.Parent = mainFrame
 
-local toggleButton = Instance.new("TextButton")
-toggleButton.Name = "ToggleButton"
-toggleButton.Size = UDim2.new(0, 180, 0, 40)
-toggleButton.Position = UDim2.new(0, 10, 0, 10)
-toggleButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-toggleButton.Text = "FLING: OFF"
-toggleButton.TextColor3 = Color3.fromRGB(255, 255, 255)
-toggleButton.TextScaled = true
-toggleButton.Font = Enum.Font.SourceSansBold
-toggleButton.Parent = mainFrame
+-- Function to fling other players
+local function flingPlayer(otherPart)
+	local otherCharacter = otherPart.Parent
+	local humanoid = otherCharacter:FindFirstChildOfClass("Humanoid")
+	local otherRootPart = otherCharacter:FindFirstChild("HumanoidRootPart")
 
-local buttonCorner = Instance.new("UICorner")
-buttonCorner.CornerRadius = UDim.new(0, 5)
-buttonCorner.Parent = toggleButton
+	-- Check if the touched part belongs to another player's character
+	if humanoid and otherRootPart and otherCharacter ~= character then
+		-- Create a BodyVelocity to fling the other player
+		local root = otherRootPart:FindFirstChild("RootAttachment")
+		local vf2 = Instance.new("VectorForce")
+		vf2.ApplyAtCenterOfMass =true
+		vf2.Attachment0 =root
+		--vf. = Vector3.new(math.huge, math.huge, math.huge)
+		vf2.Force  = Vector3.new(0, 999999999999999, 10)
+		vf2.Parent = otherRootPart
+		
+		--bodyVelocity.Velocity = (otherRootPart.Position - rootPart.Position).Unit * 99999999999 + Vector3.new(0, 50, 0) -- Fling direction and upward boost
+		--bodyVelocity.Parent = otherRootPart
 
-local flingEnabled = false
-
-local function toggleFling()
-    flingEnabled = not flingEnabled
-    if flingEnabled then
-        toggleButton.BackgroundColor3 = Color3.fromRGB(0, 255, 0)
-        toggleButton.Text = "FLING: ON"
-    else
-        toggleButton.BackgroundColor3 = Color3.fromRGB(255, 0, 0)
-        toggleButton.Text = "FLING: OFF"
-    end
+	end
 end
 
-toggleButton.MouseButton1Click:Connect(toggleFling)
-
-local function flingPlayer(touchedPart, myPart)
-    if not flingEnabled then return end
-    
-    print("Touched detected!")  -- Debug: Does the event fire?
-    
-    local touchedPlayer = Players:GetPlayerFromCharacter(touchedPart.Parent)
-    if not touchedPlayer or touchedPlayer == player then return end
-    
-    local targetCharacter = touchedPlayer.Character
-    if not targetCharacter then return end
-    
-    local humanoidRootPart = targetCharacter:FindFirstChild("HumanoidRootPart")
-    if not humanoidRootPart then return end
-    
-    local userRootPart = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
-    if not userRootPart then return end
-    
-    -- Better direction: From contact point outward (fallback if too close)
-    local contactDirection = (touchedPart.Position - myPart.Position).Unit
-    if contactDirection.Magnitude < 0.1 then  -- If too close, use root-to-root
-        contactDirection = (humanoidRootPart.Position - userRootPart.Position).Unit
-    end
-    if contactDirection.Magnitude < 0.1 then  -- Last resort: random outward
-        contactDirection = Vector3.new(math.random(-1,1), 0, math.random(-1,1)).Unit
-    end
-    
-    local velocity = contactDirection * 200000 + Vector3.new(0, 100, 0)  -- Strong push + upward fling
-    
-    local bodyVelocity = Instance.new("BodyVelocity")
-    bodyVelocity.MaxForce = Vector3.new(math.huge, math.huge, math.huge)  -- Full control
-    bodyVelocity.Velocity = velocity
-    bodyVelocity.Parent = humanoidRootPart
-    
-    print("Fling applied to " .. touchedPlayer.Name .. "!")  -- Debug: Success?
-    
-    Debris:AddItem(bodyVelocity, 0.3)  -- Shorter duration for snappier feel
+local function noclip(otherPart)
+		if otherPart:IsA("BasePart") then
+			otherPart.CanCollide = false
+		end 	
 end
 
-local function onCharacterAdded(character)
-    local connections = {}
-    for _, part in pairs(character:GetChildren()) do
-        if part:IsA("BasePart") then
-            local touchConnection = part.Touched:Connect(function(touchedPart)
-                flingPlayer(touchedPart, part)  -- Pass myPart for better direction
-            end)
-            table.insert(connections, touchConnection)
-        end
-    end
-    
-    local childAddedConnection = character.ChildAdded:Connect(function(child)
-        if child:IsA("BasePart") then
-            local touchConnection = child.Touched:Connect(function(touchedPart)
-                flingPlayer(touchedPart, child)
-            end)
-            table.insert(connections, touchConnection)
-        end
-    end)
-    table.insert(connections, childAddedConnection)
-end
+-- Connect the touch event
+rootPart.Touched:Connect(flingPlayer)
 
-local characterConnection = player.CharacterAdded:Connect(onCharacterAdded)
+torso.Touched:Connect(noclip)
 
-if player.Character then
-    onCharacterAdded(player.Character)
-end
-
-print("Updated Fling Toggle loaded! Check console for debug prints.")
+-- Handle character respawn
+player.CharacterAdded:Connect(function(newCharacter)
+	character = newCharacter
+	rootPart = newCharacter:WaitForChild("HumanoidRootPart")
+	rootPart.Touched:Connect(flingPlayer)
+end)
