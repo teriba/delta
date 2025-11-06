@@ -33,9 +33,8 @@ local function flingPlayer(otherPart)
 end
 
 local function noclip(otherPart)
-		if otherPart:IsA("BasePart") then
 			otherPart.CanCollide = false
-		end 	
+		 	
 end
 
 -- Connect the touch event
